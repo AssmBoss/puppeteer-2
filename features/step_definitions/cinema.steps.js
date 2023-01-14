@@ -3,9 +3,8 @@ const chai = require("chai");
 const expect = chai.expect;
 const { Given, When, Then, Before, After } = require("cucumber");
 const { getText, clickElement } = require("../../lib/commands.js");
-const { confirmBooking, getFreeRandomChair, gotoAfterTomorrowHallOne} = require("../../lib/util.js");
+const { confirmBooking, getFreeRandomChair, selectDate, selectHall} = require("../../lib/util.js");
 
-let rows = 11, chairsInRow = 10; // рядов, кресел в ряду в Зале 1
 let freeChair;
 
 Before(async function () {
@@ -23,40 +22,41 @@ After(async function () {
 
 Given("user is on cinema hall page", { timeout: 60 * 1000 }, async function () {
   await this.page.goto("http://qamid.tmweb.ru");
-  return await gotoAfterTomorrowHallOne(this.page);
 });
 
-When("user selects one free chair", { timeout: 60 * 1000 }, async function () {
-  freeChair = await getFreeRandomChair(this.page, rows, chairsInRow);
-  return await clickElement(this.page, freeChair);
+When ("user selects day {string}", { timeout: 60 * 1000 }, async function (string) {
+  await selectDate(this.page, Number(string));
 });
 
-When("user selects three free chairs", { timeout: 60 * 1000 }, async function () {
-  for (let i = 0; i < 3; i++) {
-    let freeChair = await getFreeRandomChair(this.page, rows, chairsInRow);
+When ("user selects hall {string}", { timeout: 60 * 1000 }, async function (string) {
+  await selectHall(this.page, Number(string));
+});
+
+When("user selects {string} free chairs", { timeout: 60 * 1000 }, async function (string) {
+  for (let i = 0; i < Number(string); i++) {
+    freeChair = await getFreeRandomChair(this.page);
     await clickElement(this.page, freeChair);
   }
 });
 
-When( "user get the QR", { timeout: 60 * 1000 }, async function () {
+When( "user confirms booking", { timeout: 60 * 1000 }, async function () {
   return await confirmBooking(this.page);
 });
 
 When("user return to cinema hall", { timeout: 60 * 1000 }, async function () {
   await this.page.goto("http://qamid.tmweb.ru");
-  return await gotoAfterTomorrowHallOne(this.page);
 });
 
 When("user selects same chair", { timeout: 60 * 1000 }, async function () {
-  return await clickElement(this.page, freeChair);
+  await clickElement(this.page, freeChair);
 });
 
-Then("user get the QR with selector {string} and 3 places", { timeout: 60 * 1000 }, async function (string) {
+Then("user get the QR and {string} places", { timeout: 60 * 1000 }, async function (string) {
   const actual = await confirmBooking(this.page);
-  const expected = await string;
-  expect(actual).contains(expected);
+  const chairsQuantity = await Number(string);
+  expect(actual).contains("ticket__info-qr");
   let chairs = (await getText(this.page, "p:nth-child(2) > span")).split(", ");
-  expect(chairs.length).equal(3);
+  expect(chairs.length).equal(chairsQuantity);
 });
 
 Then("user get the QR with selector {string}", { timeout: 60 * 1000 }, async function (string) {
